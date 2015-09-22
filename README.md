@@ -1,4 +1,4 @@
-# XdebugFlamechartConverter
+# Xdebug Flamechart Converter
 
 Converts an [Xdebug profile](http://www.xdebug.org/docs/profiler) to a .cpuprofile file that can be viewed as a flamechart with Chrome Developer Tools.
 
