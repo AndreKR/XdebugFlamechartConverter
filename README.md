@@ -20,3 +20,7 @@ http://andrekr.github.io/XdebugFlamechartConverter/profile_converter.html
 
 * Xdebug does not give information about *when*, within one function, another function is called. The Flamechart Converter just shows all called functions in the middle of each calling function
 * Xdebug stores the durations with a relatively low resolution (the unit is 10 µs, effectively the resolution is lower), so many small functions end up with a time of 0. To make them visible in the flamechart, the Converter shows them with 100 ns. Theoretically, when a function makes thousands of small function calls but has no *self* time, this can increase the displayed duration of that function a bit.
+
+## Source
+
+It's Javascript, so download the HTML file or go to the [pages branch](https://github.com/AndreKR/XdebugFlamechartConverter/tree/gh-pages)
