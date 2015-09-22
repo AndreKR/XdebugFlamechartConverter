@@ -1,0 +1,199 @@
+<html>
+	<body>
+		<script type="text/javascript">
+			// To get a drop event we have to cancel dragover:
+			document.addEventListener('dragover', function (e) { e.preventDefault(); }, false);
+
+			document.addEventListener('drop', function (e) {
+				e.preventDefault();
+
+				document.querySelector('[data-bind=instructions]').innerHTML = 'Working...';
+
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					var link;
+					var skip_summary;
+					var lines;
+					var current_block;
+					var blocks;
+					var reading;
+					var stack;
+					var output;
+					var current_id;
+					var current_timestamp;
+					var head_root_children;
+
+					lines = e.target.result.split("\r\n");
+
+					reading = false;
+					skip_summary = 0;
+					blocks = [];
+					current_block = [];
+					lines.forEach(function (v) {
+						if (reading)
+						{
+							if (v != '' && !skip_summary)
+							{
+								current_block.push(v);
+								if (v == 'fn={main}')
+									skip_summary = 3;
+							}
+							else
+							{
+								if (skip_summary)
+									skip_summary--;
+								else
+								{
+									blocks.push(current_block);
+									current_block = [];
+								}
+							}
+						}
+						else
+						{
+							if (v.substr(0,7) == 'events:')
+								reading = true;
+						}
+					});
+
+					blocks.shift(); // the first block is always empty
+
+					stack = [];
+					blocks.forEach(function (v) {
+						var i;
+						var child;
+						var entry;
+
+						if (!v.length)
+							return;
+
+						entry = {};
+						entry.fl = v[0].substr(3);
+						entry.fn = v[1].substr(3);
+
+						entry.self_us = v[2].split(' ')[1] / 10;
+
+						if (v.length > 3)
+						{
+							entry.children = [];
+							for (i = (v.length-3) / 4 ; i > 0 ; i--)
+							{
+								child = stack.pop();
+
+								if (child.fl != v[3 + (i-1)*4].substr(4) || child.fn != v[4 + (i-1)*4].substr(4))
+									console.log('Mismatch!');
+
+								child.cum_us = v[6 + (i-1)*4].split(' ')[1] / 10;
+
+								child.called_from_file = entry.fl;
+								child.called_from_line = parseInt(v[6 + (i-1)*4].split(' ')[0]);
+
+								entry.children.push(child);
+							}
+							entry.children.reverse();
+						}
+
+						stack.push(entry);
+					});
+
+					output = {
+						head: {},
+						samples: [],
+						timestamps: []
+					};
+
+					current_id = 0;
+					current_timestamp = 0;
+
+					head_root_children = (function write(partial_tree) {
+						var head_tree = [];
+
+						partial_tree.forEach(function (v) {
+							var head_entry;
+							var timestamp_before_children;
+							var display_time;
+							var this_id;
+							var children_time;
+							var timestamp_shifted_by;
+
+							current_id++;
+							this_id = current_id;
+
+							output.timestamps.push(current_timestamp);
+							output.samples.push(this_id);
+
+							head_entry = {
+								"functionName": v.fn,
+								"scriptId": "0",
+								"url": v.called_from_file,
+								"lineNumber": v.called_from_line,
+								"columnNumber": 0,
+								"hitCount": 1,
+								"callUID": this_id,
+								"children": [],
+								"positionTicks": [],
+								"deoptReason": "",
+								"id": this_id
+							};
+
+							timestamp_before_children = current_timestamp;
+							timestamp_shifted_by = 0;
+							if ('children' in v)
+							{
+								children_time = 0;
+								v.children.forEach(function (v) {
+									children_time += v.cum_us;
+								});
+
+								// Shift the childrens' timestamps by half the self time of this function to align them in the middle
+								timestamp_shifted_by = Math.max((v.cum_us - children_time) / 2, 0);
+								current_timestamp += timestamp_shifted_by;
+								timestamp_before_children += timestamp_shifted_by;
+
+								head_entry.children = write(v.children);
+							}
+
+							// add a sample about the return to this function
+							output.timestamps.push(current_timestamp);
+							output.samples.push(this_id);
+
+							display_time = v.cum_us;
+							display_time -= (current_timestamp - timestamp_before_children); // self time = cumulated time - childrens' time
+							display_time -= timestamp_shifted_by;
+							display_time = Math.max(display_time, 0.1); // make nothing shorter than 100 ns
+							current_timestamp += display_time;
+
+							// add a sample about the end of this function
+							output.timestamps.push(current_timestamp);
+							output.samples.push(this_id);
+
+							head_tree.push(head_entry);
+						});
+
+						return head_tree;
+					})(stack[0].children);
+
+					output.head = {
+						"functionName": "(root)",
+						"scriptId": "0",
+						"url": "",
+						"lineNumber": 0,
+						"columnNumber": 0,
+						"hitCount": 0,
+						"callUID": 0,
+						children: head_root_children
+					};
+
+					link = document.createElement('a');
+					link.href = window.URL.createObjectURL(new Blob([JSON.stringify(output)], {type: 'text/plain'}));
+					link.download = "PHP.cpuprofile";
+					link.click();
+
+					document.querySelector('[data-bind=instructions]').innerHTML = 'Finished. Open Chrome Developer Tools and load the downloaded files on the Profiles tab. Or drop the next file here.';
+				};
+				reader.readAsBinaryString(e.dataTransfer.files[0]);
+			}, false);
+		</script>
+		<span data-bind="instructions">Drop Xdebug profile here</span>
+	</body>
+</html>
