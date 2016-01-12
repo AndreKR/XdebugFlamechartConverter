@@ -20,9 +20,9 @@ http://andrekr.github.io/XdebugFlamechartConverter/profile_converter.html
 
 To convert really large files, there is also a version for Node.js.
 
-Usage: `node profile_converter.js <path to xdebug profile> [<depth limit>]`
+Usage: `node [--max-old-space-size=<memory limit>] profile_converter.js <path to xdebug profile> [<depth limit>]`
 
-Example: `node profile_converter.js /path/to/profile.cachegrind 15`
+Example: `node --max-old-space-size=8192 profile_converter.js /path/to/profile.cachegrind 15`
 
 The result will be written to `PHP.cpuprofile` next to the input file, ready for Chrome to be read (see above).
 
