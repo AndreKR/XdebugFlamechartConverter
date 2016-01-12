@@ -16,6 +16,18 @@ http://andrekr.github.io/XdebugFlamechartConverter/profile_converter.html
 
 ![Screenshot](http://andrekr.github.io/XdebugFlamechartConverter/screenshot.png)
 
+## Converting large files
+
+To convert really large files, there is also a version for Node.js.
+
+Usage: `node profile_converter.js <path to xdebug profile> [<depth limit>]`
+
+Example: `node profile_converter.js /path/to/profile.cachegrind 15`
+
+The result will be written to `PHP.cpuprofile` next to the input file, ready for Chrome to be read (see above).
+
+If the output file is already too large to be read by Chrome, a depth limit can be specified. In this case functions that are lower in the flamechart are not included.
+
 ## Limitations
 
 * Xdebug does not give information about *when*, within one function, another function is called. The Flamechart Converter just shows all called functions in the middle of each calling function
